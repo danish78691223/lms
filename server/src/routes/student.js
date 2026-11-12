@@ -8,7 +8,17 @@ router.get("/dashboard",async(req,res)=>{
   Announcement.find({status:"PUBLISHED",$or:[{courses:{$size:0}},{courses:{$in:student.courses.map(c=>c._id)}}]}).sort({pinned:-1,createdAt:-1}).limit(5),
   Assignment.find({status:"PUBLISHED",course:{$in:student.courses.map(c=>c._id)}}).sort({dueDate:1}).limit(6)
  ]);
- res.json({student,courses:student.courses.map(c=>({id:c._id,name:c.name,months:c.months.length,completedMonths:0})),lectures,announcements,assignments});
+ const publishedLessons=await Lesson.find({course:{$in:student.courses.map(c=>c._id)},status:"PUBLISHED"}).select("course monthId");
+ const completedIds=new Set((student.completedLessons||[]).map(id=>String(id)));
+ const courseProgress=student.courses.map(course=>{
+   const publishedMonths=course.months.filter(month=>month.status==="PUBLISHED");
+   const completedMonths=publishedMonths.filter(month=>{
+     const monthLessons=publishedLessons.filter(lesson=>String(lesson.course)===String(course._id)&&String(lesson.monthId)===String(month._id));
+     return monthLessons.length>0&&monthLessons.every(lesson=>completedIds.has(String(lesson._id)));
+   }).length;
+   return {id:course._id,name:course.name,months:8,completedMonths,progressPercent:Math.round(completedMonths/8*100)};
+ });
+ res.json({student,courses:courseProgress,lectures,announcements,assignments});
 });
 router.get("/courses",async(req,res)=>res.json(await Course.find({_id:{$in:req.user.courses}}).select("name code description months")));
 router.get("/syllabus",async(req,res)=>{
