@@ -91,7 +91,9 @@ router.get("/progress",async(req,res)=>{
  const perCourse=courses.map(course=>{
    const courseLessons=lessons.filter(l=>String(l.course)===String(course._id));
    const done=courseLessons.filter(l=>completed.has(String(l._id))).length;
-   return {courseId:course._id,name:course.name,totalLessons:courseLessons.length,completedLessons:done,percent:courseLessons.length?Math.round(done/courseLessons.length*100):0,totalMonths:8,publishedMonths:course.months.filter(m=>m.status==="PUBLISHED").length};
+   const completedMonthNumbers=course.months.filter(month=>{const monthLessons=courseLessons.filter(l=>String(l.monthId)===String(month._id));return month.status==="PUBLISHED"&&monthLessons.length>0&&monthLessons.every(l=>completed.has(String(l._id)))}).map(month=>month.number);
+   const publishedMonthNumbers=course.months.filter(month=>month.status==="PUBLISHED").map(month=>month.number);
+   return {courseId:course._id,name:course.name,totalLessons:courseLessons.length,completedLessons:done,percent:courseLessons.length?Math.round(done/courseLessons.length*100):0,totalMonths:8,publishedMonths:publishedMonthNumbers.length,completedMonthNumbers,publishedMonthNumbers};
  });
  res.json({courses:perCourse,submissions:submissions.length,graded:submissions.filter(s=>s.marks!=null).length,attendance:attendance.length,attendancePresent:attendance.filter(a=>a.status==="PRESENT").length});
 });
