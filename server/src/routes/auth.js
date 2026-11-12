@@ -4,8 +4,17 @@ import jwt from "jsonwebtoken";
 import { z } from "zod";
 import { User } from "../models/index.js";
 import { authenticate } from "../middleware/auth.js";
+
 const router = Router();
-const cookieOptions = () => ({ httpOnly: true, secure: process.env.COOKIE_SECURE === "true", sameSite: "lax", maxAge: 86400000, path: "/" });
+const secureCookie = process.env.COOKIE_SECURE === "true";
+const cookieSameSite = secureCookie ? "none" : "lax";
+const cookieOptions = () => ({
+  httpOnly: true,
+  secure: secureCookie,
+  sameSite: cookieSameSite,
+  maxAge: 86400000,
+  path: "/",
+});
 
 router.post("/login", async (req, res) => {
   const parsed = z.object({ userId: z.string().min(1), password: z.string().min(1) }).safeParse(req.body);
@@ -17,7 +26,15 @@ router.post("/login", async (req, res) => {
   res.cookie("lms_token", token, cookieOptions());
   res.json({ user: { id: user._id, userId: user.userId, fullName: user.fullName, role: user.role, forcePasswordChange: user.forcePasswordChange } });
 });
-router.post("/logout", (req, res) => { res.clearCookie("lms_token", { httpOnly: true, sameSite: "lax", secure: process.env.COOKIE_SECURE === "true", path: "/" }); res.json({ message: "Logged out" }); });
+router.post("/logout", (req, res) => {
+  res.clearCookie("lms_token", {
+    httpOnly: true,
+    sameSite: cookieSameSite,
+    secure: secureCookie,
+    path: "/",
+  });
+  res.json({ message: "Logged out" });
+});
 router.get("/me", authenticate, (req, res) => res.json({ user: req.user }));
 router.post("/change-password", authenticate, async (req, res) => {
   const parsed = z.object({ currentPassword: z.string().min(1), newPassword: z.string().min(10) }).safeParse(req.body);
@@ -25,7 +42,8 @@ router.post("/change-password", authenticate, async (req, res) => {
   const user = await User.findById(req.user._id);
   if (!(await bcrypt.compare(parsed.data.currentPassword, user.passwordHash))) return res.status(400).json({ message: "Current password is incorrect" });
   user.passwordHash = await bcrypt.hash(parsed.data.newPassword, 12);
-  user.forcePasswordChange = false; await user.save();
+  user.forcePasswordChange = false;
+  await user.save();
   res.json({ message: "Password updated" });
 });
 export default router;
