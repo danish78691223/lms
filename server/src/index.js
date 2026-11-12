@@ -10,6 +10,7 @@ import { authenticate, allow } from "./middleware/auth.js";
 import authRoutes from "./routes/auth.js";
 import adminRoutes from "./routes/admin.js";
 import studentRoutes from "./routes/student.js";
+import { ensureDefaultCourses } from "./utils/ensureDefaultCourses.js";
 
 const app = express();
 // Render terminates TLS and forwards requests through one trusted proxy hop.
@@ -49,7 +50,10 @@ app.use((err, req, res, next) => {
 });
 const port = process.env.PORT || 5000;
 connectDB()
-  .then(() => app.listen(port, () => console.log("API listening on " + port)))
+  .then(async () => {
+    await ensureDefaultCourses();
+    app.listen(port, () => console.log("API listening on " + port));
+  })
   .catch((e) => {
     console.error(e);
     process.exit(1);
