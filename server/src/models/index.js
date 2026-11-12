@@ -68,7 +68,7 @@ const assignmentSchema = new Schema({
 const submissionSchema = new Schema({
   assignment: { type: Schema.Types.ObjectId, ref: "Assignment", required: true },
   student: { type: Schema.Types.ObjectId, ref: "User", required: true },
-  answerText: String, fileUrl: String, marks: Number, feedback: String, submittedAt: Date
+  answerText: String, fileUrl: String, marks: Number, maxMarks: Number, feedback: String, submittedAt: Date
 }, { timestamps: true });
 submissionSchema.index({ assignment: 1, student: 1 }, { unique: true });
 
@@ -85,6 +85,17 @@ const announcementSchema = new Schema({
   status: { type: String, enum: ["DRAFT","PUBLISHED"], default: "PUBLISHED" }
 }, { timestamps: true });
 
+const instituteSettingSchema = new Schema({
+  key: { type: String, unique: true, default: "main" },
+  instituteName: { type: String, default: "Lingo Institute" },
+  logoUrl: String,
+  contactEmail: String,
+  contactPhone: String,
+  address: String,
+  theme: { type: String, enum: ["sage", "teal"], default: "sage" },
+  updatedBy: { type: Schema.Types.ObjectId, ref: "User" },
+}, { timestamps: true });
+
 const activitySchema = new Schema({
   actor: { type: Schema.Types.ObjectId, ref: "User" }, action: String, target: String, details: String
 }, { timestamps: true });
@@ -99,3 +110,4 @@ export const Submission = model("Submission", submissionSchema);
 export const Attendance = model("Attendance", attendanceSchema);
 export const Announcement = model("Announcement", announcementSchema);
 export const Activity = model("Activity", activitySchema);
+export const InstituteSetting = model("InstituteSetting", instituteSettingSchema);
