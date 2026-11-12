@@ -12,6 +12,8 @@ import adminRoutes from "./routes/admin.js";
 import studentRoutes from "./routes/student.js";
 
 const app = express();
+// Render terminates TLS and forwards requests through one trusted proxy hop.
+app.set("trust proxy", 1);
 // Keep the known production Vercel URL in the allow-list and add any custom domains via CLIENT_ORIGIN.
 const configuredOrigins = (process.env.CLIENT_ORIGIN || "")
   .split(",")
