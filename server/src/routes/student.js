@@ -85,5 +85,23 @@ router.get("/progress",async(req,res)=>{
  });
  res.json({courses:perCourse,submissions:submissions.length,graded:submissions.filter(s=>s.marks!=null).length,attendance:attendance.length,attendancePresent:attendance.filter(a=>a.status==="PRESENT").length});
 });
+router.get("/recordings",async(req,res)=>res.json(await Lecture.find({
+ course:{$in:req.user.courses},
+ status:{$ne:"CANCELLED"},
+ $or:[{mode:"RECORDED"},{recordingUrl:{$exists:true,$ne:""}}]
+}).populate("course","name").sort({date:-1})));
+router.get("/certificates",async(req,res)=>{
+ const student=await User.findById(req.user._id).select("courses completedLessons fullName userId");
+ const completed=new Set((student.completedLessons||[]).map(id=>String(id)));
+ const courses=await Course.find({_id:{$in:student.courses}}).select("name code");
+ const certificates=[];
+ for(const course of courses){
+   const lessons=await Lesson.find({course:course._id,status:"PUBLISHED"}).select("_id");
+   if(lessons.length>0 && lessons.every(lesson=>completed.has(String(lesson._id)))){
+     certificates.push({courseId:course._id,courseName:course.name,courseCode:course.code,studentName:student.fullName});
+   }
+ }
+ res.json(certificates);
+});
 router.get("/profile",async(req,res)=>res.json(await User.findById(req.user._id).select("-passwordHash").populate("courses","name")));
 export default router;
