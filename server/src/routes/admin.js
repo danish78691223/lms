@@ -101,7 +101,16 @@ router.post("/lectures", async (req,res)=>{
   await audit(req.user._id,"CREATE_LECTURE","Lecture",x.title);
   res.status(201).json(x);
 });
-router.patch("/lectures/:id", async (req,res)=>res.json(await Lecture.findByIdAndUpdate(req.params.id,req.body,{new:true})));
+router.patch("/lectures/:id", async (req,res)=>{
+  const allowed = ["title","topic","teacher","date","startTime","endTime","mode","meetingLink","recordingUrl","batch","description","month","status"];
+  const update = Object.fromEntries(Object.entries(req.body || {}).filter(([key])=>allowed.includes(key)));
+  if (update.status && !["SCHEDULED","RESCHEDULED","CANCELLED","COMPLETED"].includes(update.status))
+    return res.status(400).json({message:"Invalid lecture status"});
+  const lecture = await Lecture.findByIdAndUpdate(req.params.id,update,{new:true,runValidators:true}).populate("course","name");
+  if(!lecture) return res.status(404).json({message:"Lecture not found"});
+  await audit(req.user._id,"UPDATE_LECTURE","Lecture",lecture.title);
+  res.json(lecture);
+});
 router.get("/lectures", async (req,res)=>res.json(await Lecture.find().populate("course","name").sort({date:1})));
 router.post("/assignments", async (req,res)=>res.status(201).json(await Assignment.create(req.body)));
 router.get("/assignments", async (req,res)=>res.json(await Assignment.find().populate("course","name").sort({createdAt:-1})));
