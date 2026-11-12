@@ -5,7 +5,7 @@ router.get("/dashboard",async(req,res)=>{
  const student=await User.findById(req.user._id).populate("courses","name code months");
  const [lectures,announcements,assignments]=await Promise.all([
   Lecture.find({course:{$in:student.courses.map(c=>c._id)},date:{$gte:new Date()},status:{$ne:"CANCELLED"}}).populate("course","name").sort({date:1}).limit(6),
-  Announcement.find({status:"PUBLISHED",$or:[{courses:{$size:0}},{courses:{$in:student.courses.map(c=>c._id)}}]}).sort({pinned:-1,createdAt:-1}).limit(5),
+  Announcement.find({status:"PUBLISHED",$and:[{$or:[{courses:{$size:0}},{courses:{$in:student.courses.map(c=>c._id)}}]},{$or:[{batches:{$size:0}},{batches:{$exists:false}},{batches:student.batch}]}]}).sort({pinned:-1,createdAt:-1}).limit(5),
   Assignment.find({status:"PUBLISHED",course:{$in:student.courses.map(c=>c._id)}}).sort({dueDate:1}).limit(6)
  ]);
  const publishedLessons=await Lesson.find({course:{$in:student.courses.map(c=>c._id)},status:"PUBLISHED"}).select("course monthId");
@@ -31,8 +31,8 @@ router.get("/materials",async(req,res)=>{
  const filter={course:{$in:courses},status:"PUBLISHED",$or:[{batches:{$size:0}},{batches:req.user.batch},{studentIds:req.user._id}]};
  res.json(await Material.find(filter).populate("course","name").sort({createdAt:-1}));
 });
-router.get("/lectures",async(req,res)=>res.json(await Lecture.find({course:{$in:req.user.courses}}).populate("course","name").sort({date:1})));
-router.get("/announcements",async(req,res)=>res.json(await Announcement.find({status:"PUBLISHED",$or:[{courses:{$size:0}},{courses:{$in:req.user.courses}},{batches:req.user.batch}]}).sort({pinned:-1,createdAt:-1})));
+router.get("/lectures",async(req,res)=>res.json(await Lecture.find({course:{$in:req.user.courses},$or:[{batch:{$exists:false}},{batch:null},{batch:""},{batch:req.user.batch}]}).populate("course","name").sort({date:1})));
+router.get("/announcements",async(req,res)=>res.json(await Announcement.find({status:"PUBLISHED",$and:[{$or:[{courses:{$size:0}},{courses:{$exists:false}},{courses:{$in:req.user.courses}}]},{$or:[{batches:{$size:0}},{batches:{$exists:false}},{batches:req.user.batch}]}]}).sort({pinned:-1,createdAt:-1})));
 router.get("/assignments",async(req,res)=>{
  const assignments=await Assignment.find({status:"PUBLISHED",course:{$in:req.user.courses}}).populate("course","name");
  const submissions=await Submission.find({student:req.user._id});
