@@ -1,0 +1,45 @@
+import { Router } from "express";
+import { User, Course, Lesson, Material, Lecture, Assignment, Submission, Attendance, Announcement } from "../models/index.js";
+const router=Router();
+router.get("/dashboard",async(req,res)=>{
+ const student=await User.findById(req.user._id).populate("courses","name code months");
+ const [lectures,announcements,assignments]=await Promise.all([
+  Lecture.find({course:{$in:student.courses.map(c=>c._id)},date:{$gte:new Date()},status:{$ne:"CANCELLED"}}).populate("course","name").sort({date:1}).limit(6),
+  Announcement.find({status:"PUBLISHED",$or:[{courses:{$size:0}},{courses:{$in:student.courses.map(c=>c._id)}}]}).sort({pinned:-1,createdAt:-1}).limit(5),
+  Assignment.find({status:"PUBLISHED",course:{$in:student.courses.map(c=>c._id)}}).sort({dueDate:1}).limit(6)
+ ]);
+ res.json({student,courses:student.courses.map(c=>({id:c._id,name:c.name,months:c.months.length,completedMonths:0})),lectures,announcements,assignments});
+});
+router.get("/courses",async(req,res)=>res.json(await Course.find({_id:{$in:req.user.courses}}).select("name code description months")));
+router.get("/syllabus",async(req,res)=>{
+ const courses=await Course.find({_id:{$in:req.user.courses}});
+ const lessons=await Lesson.find({course:{$in:courses.map(c=>c._id)},status:"PUBLISHED"}).populate("course","name");
+ res.json({courses:courses.map(c=>({...c.toObject(),months:c.months.filter(m=>m.status==="PUBLISHED")})),lessons});
+});
+router.get("/materials",async(req,res)=>{
+ const courses=req.user.courses;
+ const filter={course:{$in:courses},status:"PUBLISHED",$or:[{batches:{$size:0}},{batches:req.user.batch},{studentIds:req.user._id}]};
+ res.json(await Material.find(filter).populate("course","name").sort({createdAt:-1}));
+});
+router.get("/lectures",async(req,res)=>res.json(await Lecture.find({course:{$in:req.user.courses},status:{$ne:"CANCELLED"}}).populate("course","name").sort({date:1})));
+router.get("/announcements",async(req,res)=>res.json(await Announcement.find({status:"PUBLISHED",$or:[{courses:{$size:0}},{courses:{$in:req.user.courses}},{batches:req.user.batch}]}).sort({pinned:-1,createdAt:-1})));
+router.get("/assignments",async(req,res)=>{
+ const assignments=await Assignment.find({status:"PUBLISHED",course:{$in:req.user.courses}}).populate("course","name");
+ const submissions=await Submission.find({student:req.user._id});
+ res.json(assignments.map(a=>({...a.toObject(),submission:submissions.find(s=>String(s.assignment)===String(a._id))||null})));
+});
+router.post("/assignments/:id/submit",async(req,res)=>{
+ const assignment=await Assignment.findOne({_id:req.params.id,status:"PUBLISHED",course:{$in:req.user.courses}});
+ if(!assignment)return res.status(404).json({message:"Assignment unavailable"});
+ const submission=await Submission.findOneAndUpdate({assignment:assignment._id,student:req.user._id},{answerText:req.body.answerText,fileUrl:req.body.fileUrl,submittedAt:new Date()},{upsert:true,new:true,setDefaultsOnInsert:true});
+ res.json(submission);
+});
+router.post("/lessons/:id/complete",async(req,res)=>{
+ const lesson=await Lesson.findOne({_id:req.params.id,status:"PUBLISHED",course:{$in:req.user.courses}});
+ if(!lesson)return res.status(404).json({message:"Lesson unavailable"});
+ await User.updateOne({_id:req.user._id},{$addToSet:{completedLessons:lesson._id}});
+ res.json({message:"Lesson marked complete"});
+});
+router.get("/attendance",async(req,res)=>res.json(await Attendance.find({student:req.user._id}).populate({path:"lecture",populate:{path:"course",select:"name"}}).sort({createdAt:-1})));
+router.get("/profile",async(req,res)=>res.json(await User.findById(req.user._id).select("-passwordHash").populate("courses","name")));
+export default router;

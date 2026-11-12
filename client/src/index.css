@@ -1,0 +1,8 @@
+@tailwind base;@tailwind components;@tailwind utilities;
+:root{font-family:Inter,system-ui,sans-serif;color:#2F3E46;background:#F7F9F8;font-synthesis:none}
+*{box-sizing:border-box}body{margin:0;min-width:320px}button,input,select,textarea{font:inherit}
+[dir=rtl]{text-align:right;font-family:"Noto Naskh Arabic","Noto Nastaliq Urdu",serif}
+.card{background:white;border:1px solid #e8eeeb;border-radius:18px;box-shadow:0 8px 28px rgba(47,62,70,.045)}
+.btn{background:#4FA39A;color:white;border-radius:11px;padding:10px 15px;font-weight:600}.btn:hover{background:#3d8d85}.btn-secondary{background:#e6f2ee;color:#356e68}
+.field{width:100%;border:1px solid #dbe5e1;border-radius:10px;padding:11px 12px;background:white;outline:none}.field:focus{border-color:#4FA39A;box-shadow:0 0 0 3px #4fa39a20}
+.navlink{display:flex;gap:11px;align-items:center;padding:10px 12px;border-radius:10px;color:#48615d}.navlink.active,.navlink:hover{background:#d4e9e2;color:#276b64}
