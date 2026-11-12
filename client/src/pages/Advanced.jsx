@@ -143,7 +143,7 @@ export function AdminLessons() {
       <div className="flex items-end"><button className="btn">Save lesson</button></div>
     </form>
     <ErrorText>{error}</ErrorText>{message&&<p className="text-sm text-teal mt-2">{message}</p>}
-    <div className="mt-5 border-t pt-4"><h3 className="font-semibold mb-2">Existing lessons ({lessons.length})</h3>{lessons.length?lessons.map(l=><div key={l._id} className="py-2 border-b last:border-0 flex flex-wrap justify-between gap-2"><div><b className="text-sm">{l.title}</b><p className="text-xs text-slate-500">{l.course?.name} · Week {l.week}</p></div><span className="text-xs text-teal">{l.status}</span></div>):<p className="text-sm text-slate-500">No lessons created yet.</p>}</div>
+    <div className="mt-5 border-t pt-4"><h3 className="font-semibold mb-2">Existing lessons ({lessons.length})</h3>{lessons.length?lessons.map(l=><div key={l._id} className="py-2 border-b last:border-0 flex flex-wrap justify-between gap-2"><div><b className="text-sm">{l.title}</b><p className="text-xs text-slate-500">{l.course?.name} · Week {l.week}</p></div><button className="text-xs text-teal font-semibold" onClick={async()=>{try{await api("/admin/lessons/"+l._id,{method:"PATCH",body:JSON.stringify({status:l.status==="PUBLISHED"?"DRAFT":"PUBLISHED"})});await loadLessons()}catch(e){setError(e.message)}}}>{l.status==="PUBLISHED"?"Move to draft":"Publish lesson"}</button></div>):<p className="text-sm text-slate-500">No lessons created yet.</p>}</div>
   </section>;
 }
 
