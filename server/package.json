@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "nodemon src/index.js",
     "build": "node --check src/index.js",
-    "start": "node src/index.js",
+    "start": "node src/seed-admin.js && node src/index.js",
     "seed": "node src/seed.js",
     "seed:admin": "node src/seed-admin.js"
   },
