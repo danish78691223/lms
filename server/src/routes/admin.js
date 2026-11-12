@@ -89,6 +89,7 @@ router.patch("/courses/:id/months/:monthId", async (req,res)=>{
   const month=course.months.id(req.params.monthId); if(!month) return res.status(404).json({message:"Month not found"});
   Object.assign(month,req.body); await course.save(); res.json(course);
 });
+router.get("/lessons", async (req,res)=>res.json(await Lesson.find().populate("course","name").sort({createdAt:-1})));
 router.post("/lessons", async (req,res)=>{ const lesson=await Lesson.create(req.body); await audit(req.user._id,"CREATE_LESSON","Lesson",lesson.title); res.status(201).json(lesson); });
 router.patch("/lessons/:id", async (req,res)=>{ const lesson=await Lesson.findByIdAndUpdate(req.params.id,req.body,{new:true}); res.json(lesson); });
 router.post("/materials", async (req,res)=>{ const m=await Material.create(req.body); await audit(req.user._id,"CREATE_MATERIAL","Material",m.title); res.status(201).json(m); });
