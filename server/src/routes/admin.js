@@ -171,11 +171,17 @@ router.post("/lectures/recurring", async (req, res) => {
   const hour = Number(time.slice(0, 2)), minute = Number(time.slice(3, 5));
   if (!/^([01][0-9]|2[0-3]):[0-5][0-9]$/.test(time))
     return res.status(400).json({ message: "Start time must use HH:MM format" });
+  const offset = Number(utcOffsetMinutes);
+  if (!Number.isInteger(offset) || offset < -840 || offset > 840)
+    return res.status(400).json({ message: "Invalid local timezone offset" });
+  const offsetSign = offset >= 0 ? "+" : "-";
+  const absoluteOffset = Math.abs(offset);
+  const offsetText = offsetSign + String(Math.floor(absoluteOffset / 60)).padStart(2, "0") + ":" + String(absoluteOffset % 60).padStart(2, "0");
   const dates = [];
   for (const cursor = new Date(start); cursor <= end; cursor.setUTCDate(cursor.getUTCDate() + 1)) {
     if (days.has(cursor.getUTCDay())) {
-      const date = new Date(cursor);
-      date.setUTCHours(hour, minute, 0, 0);
+      const dayText = cursor.toISOString().slice(0, 10);
+      const date = new Date(`${dayText}T${time}:00${offsetText}`);
       dates.push(date);
     }
   }
