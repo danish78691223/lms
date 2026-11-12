@@ -4,7 +4,7 @@ const router=Router();
 router.get("/dashboard",async(req,res)=>{
  const student=await User.findById(req.user._id).populate("courses","name code months");
  const [lectures,announcements,assignments]=await Promise.all([
-  Lecture.find({course:{$in:student.courses.map(c=>c._id)},date:{$gte:new Date()},status:{$ne:"CANCELLED"}}).populate("course","name").sort({date:1}).limit(6),
+  Lecture.find({course:{$in:student.courses.map(c=>c._id)},date:{$gte:new Date()},status:{$ne:"CANCELLED"},$or:[{batch:{$exists:false}},{batch:null},{batch:""},{batch:student.batch}]}).populate("course","name").sort({date:1}).limit(6),
   Announcement.find({status:"PUBLISHED",$and:[{$or:[{courses:{$size:0}},{courses:{$in:student.courses.map(c=>c._id)}}]},{$or:[{batches:{$size:0}},{batches:{$exists:false}},{batches:student.batch}]}]}).sort({pinned:-1,createdAt:-1}).limit(5),
   Assignment.find({status:"PUBLISHED",course:{$in:student.courses.map(c=>c._id)}}).sort({dueDate:1}).limit(6)
  ]);
@@ -100,7 +100,10 @@ router.get("/progress",async(req,res)=>{
 router.get("/recordings",async(req,res)=>res.json(await Lecture.find({
  course:{$in:req.user.courses},
  status:{$ne:"CANCELLED"},
- $or:[{mode:"RECORDED"},{recordingUrl:{$exists:true,$ne:""}}]
+ $and:[
+  {$or:[{batch:{$exists:false}},{batch:null},{batch:""},{batch:req.user.batch}]},
+  {$or:[{mode:"RECORDED"},{recordingUrl:{$exists:true,$ne:""}}]}
+ ]
 }).populate("course","name").sort({date:-1})));
 router.get("/certificates",async(req,res)=>{
  const student=await User.findById(req.user._id).select("courses completedLessons fullName userId");
