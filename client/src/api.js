@@ -1,8 +1,10 @@
 const configuredApiUrl = import.meta.env.VITE_API_URL?.trim();
-// Production traffic is routed through Vercel rewrites to keep auth cookies same-origin.
-const API = import.meta.env.DEV
-  ? (configuredApiUrl || "http://localhost:5000/api").replace(/\\/+$/, "")
-  : "/api";
+// Production API requests use the same Vercel origin so the httpOnly session cookie is retained.
+const developmentApiUrl = configuredApiUrl || "http://localhost:5000/api";
+const normalizedDevelopmentApiUrl = developmentApiUrl.endsWith("/")
+  ? developmentApiUrl.slice(0, -1)
+  : developmentApiUrl;
+const API = import.meta.env.DEV ? normalizedDevelopmentApiUrl : "/api";
 
 export async function api(path, options = {}) {
   const res = await fetch(API + path, {
