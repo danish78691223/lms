@@ -94,7 +94,12 @@ router.patch("/lessons/:id", async (req,res)=>{ const lesson=await Lesson.findBy
 router.post("/materials", async (req,res)=>{ const m=await Material.create(req.body); await audit(req.user._id,"CREATE_MATERIAL","Material",m.title); res.status(201).json(m); });
 router.patch("/materials/:id", async (req,res)=>res.json(await Material.findByIdAndUpdate(req.params.id,req.body,{new:true})));
 router.get("/materials", async (req,res)=>res.json(await Material.find().populate("course","name").sort({createdAt:-1})));
-router.post("/lectures", async (req,res)=>{const x=await Lecture.create(req.body); await audit(req.user._id,"CREATE_LECTURE","Lecture",x.title); res.status(201).json(x);});
+router.post("/lectures", async (req,res)=>{
+  const payload = { ...req.body, status: "SCHEDULED" };
+  const x = await Lecture.create(payload);
+  await audit(req.user._id,"CREATE_LECTURE","Lecture",x.title);
+  res.status(201).json(x);
+});
 router.patch("/lectures/:id", async (req,res)=>res.json(await Lecture.findByIdAndUpdate(req.params.id,req.body,{new:true})));
 router.get("/lectures", async (req,res)=>res.json(await Lecture.find().populate("course","name").sort({date:1})));
 router.post("/assignments", async (req,res)=>res.status(201).json(await Assignment.create(req.body)));
