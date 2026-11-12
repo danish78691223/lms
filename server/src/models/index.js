@@ -96,6 +96,13 @@ const instituteSettingSchema = new Schema({
   updatedBy: { type: Schema.Types.ObjectId, ref: "User" },
 }, { timestamps: true });
 
+const personalNoteSchema = new Schema({
+  student: { type: Schema.Types.ObjectId, ref: "User", required: true },
+  lesson: { type: Schema.Types.ObjectId, ref: "Lesson", required: true },
+  body: { type: String, maxlength: 10000, default: "" },
+}, { timestamps: true });
+personalNoteSchema.index({ student: 1, lesson: 1 }, { unique: true });
+
 const activitySchema = new Schema({
   actor: { type: Schema.Types.ObjectId, ref: "User" }, action: String, target: String, details: String
 }, { timestamps: true });
@@ -111,3 +118,4 @@ export const Attendance = model("Attendance", attendanceSchema);
 export const Announcement = model("Announcement", announcementSchema);
 export const Activity = model("Activity", activitySchema);
 export const InstituteSetting = model("InstituteSetting", instituteSettingSchema);
+export const PersonalNote = model("PersonalNote", personalNoteSchema);
