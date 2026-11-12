@@ -12,16 +12,18 @@ import adminRoutes from "./routes/admin.js";
 import studentRoutes from "./routes/student.js";
 
 const app = express();
-const allowedOrigins = (process.env.CLIENT_ORIGIN || "http://localhost:5173")
+// Keep the known production Vercel URL in the allow-list and add any custom domains via CLIENT_ORIGIN.
+const configuredOrigins = (process.env.CLIENT_ORIGIN || "")
   .split(",")
   .map((origin) => origin.trim().replace(/\/$/, ""))
   .filter(Boolean);
+const allowedOrigins = new Set(["https://lms-fawn-theta.vercel.app", "http://localhost:5173", ...configuredOrigins]);
 
 app.use(helmet());
 app.use(cors({
   origin(origin, callback) {
-    // Requests without an Origin header (health checks and server-to-server calls) are allowed.
-    if (!origin || allowedOrigins.includes(origin)) return callback(null, true);
+    if (!origin || allowedOrigins.has(origin)) return callback(null, true);
+    console.error("[CORS] Rejected origin:", origin, "| Allowed origins:", [...allowedOrigins].join(", "));
     return callback(new Error("Origin is not allowed by CORS"));
   },
   credentials: true,
