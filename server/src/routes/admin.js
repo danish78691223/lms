@@ -50,6 +50,57 @@ router.post("/students", async (req,res) => {
   await audit(req.user._id,"CREATE_STUDENT","User",userId);
   res.status(201).json({student:{id:user._id,userId:user.userId,fullName:user.fullName},credentials:{userId,password}});
 });
+router.post("/students/bulk", async (req,res) => {
+  const rows = req.body?.students;
+  if (!Array.isArray(rows) || rows.length === 0 || rows.length > 500)
+    return res.status(400).json({ message: "Upload between 1 and 500 student rows" });
+  let nextNumber = await User.countDocuments({ role: "STUDENT" }) + 1;
+  const results = [];
+  for (let index = 0; index < rows.length; index++) {
+    const parsed = studentInput.safeParse(rows[index]);
+    if (!parsed.success) {
+      results.push({ row: index + 2, success: false, message: parsed.error.issues[0].message });
+      continue;
+    }
+    const data = parsed.data;
+    const courseDocs = await Course.find({ _id: { $in: data.courses } });
+    if (courseDocs.length !== data.courses.length) {
+      results.push({ row: index + 2, success: false, message: "Invalid course selection" });
+      continue;
+    }
+    const code = courseDocs[0].code || "GEN";
+    const userId = data.customUserId?.trim() || `LMS-${code}-${new Date().getFullYear()}-${String(nextNumber).padStart(3,"0")}`;
+    if (await User.exists({ userId })) {
+      results.push({ row: index + 2, success: false, message: "Student ID already exists: " + userId });
+      continue;
+    }
+    const password = data.customPassword || makePassword();
+    if (password.length < 10) {
+      results.push({ row: index + 2, success: false, message: "Password must be at least 10 characters" });
+      continue;
+    }
+    try {
+      const user = await User.create({
+        ...data,
+        userId,
+        passwordHash: await bcrypt.hash(password, 12),
+        role: "STUDENT",
+        courses: data.courses,
+        forcePasswordChange: true,
+      });
+      await audit(req.user._id, "BULK_CREATE_STUDENT", "User", userId);
+      results.push({ row: index + 2, success: true, student: { fullName: user.fullName, userId }, credentials: { userId, password } });
+      nextNumber++;
+    } catch (error) {
+      results.push({ row: index + 2, success: false, message: error.code === 11000 ? "Duplicate student ID" : "Could not create this student" });
+    }
+  }
+  res.status(201).json({
+    created: results.filter(x => x.success).length,
+    failed: results.filter(x => !x.success).length,
+    results,
+  });
+});
 router.patch("/students/:id", async (req,res) => {
   const allowed = ["fullName","fatherName","phone","whatsapp","email","gender","dateOfBirth","address","city","batch","startDate","notes","courses","active"];
   const update = Object.fromEntries(Object.entries(req.body).filter(([k])=>allowed.includes(k)));
