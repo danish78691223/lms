@@ -9,7 +9,7 @@ const router = Router();
 const studentInput = z.object({
   fullName: z.string().min(2), fatherName: z.string().optional(), phone: z.string().optional(),
   whatsapp: z.string().optional(), email: z.string().email().optional().or(z.literal("")),
-  gender: z.string().optional(), dateOfBirth: z.string().optional(), address: z.string().optional(),
+  gender: z.string().optional(), dateOfBirth: z.string().optional(), address: z.string().optional(), profilePhoto: z.string().optional(),
   city: z.string().optional(), batch: z.string().optional(), startDate: z.string().optional(),
   notes: z.string().optional(), courses: z.array(z.string()).min(1), customUserId: z.string().optional(),
   customPassword: z.string().optional()
