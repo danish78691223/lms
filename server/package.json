@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "dev": "nodemon src/index.js",
-    "build": "node --check src/index.js",
+    "build": "node --check src/index.js && node --check src/models/index.js && node --check src/routes/auth.js && node --check src/routes/admin.js && node --check src/routes/student.js && node --check src/middleware/auth.js && node --check src/config/db.js && node --check src/utils/audit.js && node --check src/utils/ensureDefaultCourses.js",
     "start": "node src/index.js",
     "seed": "node src/seed.js"
   },
