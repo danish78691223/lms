@@ -146,3 +146,33 @@ export function AdminLessons() {
     <div className="mt-5 border-t pt-4"><h3 className="font-semibold mb-2">Existing lessons ({lessons.length})</h3>{lessons.length?lessons.map(l=><div key={l._id} className="py-2 border-b last:border-0 flex flex-wrap justify-between gap-2"><div><b className="text-sm">{l.title}</b><p className="text-xs text-slate-500">{l.course?.name} · Week {l.week}</p></div><span className="text-xs text-teal">{l.status}</span></div>):<p className="text-sm text-slate-500">No lessons created yet.</p>}</div>
   </section>;
 }
+
+
+export function AdminLectures() {
+  const [courses,setCourses]=useState([]),[items,setItems]=useState([]),[form,setForm]=useState({title:"",course:"",month:1,topic:"",teacher:"",date:"",startTime:"",endTime:"",mode:"LIVE",meetingLink:"",recordingUrl:"",batch:"",description:""}),[reschedule,setReschedule]=useState({}),[error,setError]=useState(""),[message,setMessage]=useState("");
+  async function load(){try{setItems(await api("/admin/lectures"))}catch(e){setError(e.message)}}
+  useEffect(()=>{api("/admin/courses").then(rows=>{setCourses(rows);setForm(p=>({...p,course:p.course||rows[0]?._id||""}))}).catch(e=>setError(e.message));load()},[]);
+  async function create(e){e.preventDefault();setError("");setMessage("");try{if(!form.course)throw new Error("Select a course.");await api("/admin/lectures",{method:"POST",body:JSON.stringify({...form,date:new Date(form.date),status:"SCHEDULED"})});setMessage("Lecture scheduled.");setForm(p=>({...p,title:"",topic:"",date:"",meetingLink:"",recordingUrl:"",description:""}));await load()}catch(e){setError(e.message)}}
+  async function update(id,payload){setError("");setMessage("");try{await api("/admin/lectures/"+id,{method:"PATCH",body:JSON.stringify(payload)});setMessage("Lecture updated.");await load()}catch(e){setError(e.message)}}
+  return <><Heading title="Lecture schedule" description="Schedule live classes, add recordings, and reschedule or cancel sessions."/>
+    <form className="card p-5 mb-5" onSubmit={create}><h2 className="font-bold mb-4">Schedule a lecture</h2><div className="grid md:grid-cols-2 xl:grid-cols-3 gap-3">
+      <label className="text-sm">Lecture title<input className="field mt-1" required value={form.title} onChange={e=>setForm({...form,title:e.target.value})}/></label>
+      <label className="text-sm">Course<select className="field mt-1" value={form.course} onChange={e=>setForm({...form,course:e.target.value})}>{courses.map(c=><option key={c._id} value={c._id}>{c.name}</option>)}</select></label>
+      <label className="text-sm">Month number<input className="field mt-1" type="number" min="1" max="8" value={form.month} onChange={e=>setForm({...form,month:Number(e.target.value)})}/></label>
+      <label className="text-sm">Topic<input className="field mt-1" value={form.topic} onChange={e=>setForm({...form,topic:e.target.value})}/></label>
+      <label className="text-sm">Teacher name<input className="field mt-1" value={form.teacher} onChange={e=>setForm({...form,teacher:e.target.value})}/></label>
+      <label className="text-sm">Date and time<input className="field mt-1" type="datetime-local" required value={form.date} onChange={e=>setForm({...form,date:e.target.value})}/></label>
+      <label className="text-sm">Start time<input className="field mt-1" type="time" value={form.startTime} onChange={e=>setForm({...form,startTime:e.target.value})}/></label>
+      <label className="text-sm">End time<input className="field mt-1" type="time" value={form.endTime} onChange={e=>setForm({...form,endTime:e.target.value})}/></label>
+      <label className="text-sm">Mode<select className="field mt-1" value={form.mode} onChange={e=>setForm({...form,mode:e.target.value})}><option value="LIVE">Live online</option><option value="RECORDED">Recorded</option></select></label>
+      <label className="text-sm">Batch (leave blank for all)<input className="field mt-1" value={form.batch} onChange={e=>setForm({...form,batch:e.target.value})}/></label>
+      <label className="text-sm">Meeting link<input className="field mt-1" type="url" placeholder="https://meet.google.com/…" value={form.meetingLink} onChange={e=>setForm({...form,meetingLink:e.target.value})}/></label>
+      <label className="text-sm">Recording URL<input className="field mt-1" type="url" value={form.recordingUrl} onChange={e=>setForm({...form,recordingUrl:e.target.value})}/></label>
+      <label className="text-sm md:col-span-2 xl:col-span-3">Description<textarea className="field mt-1" rows="2" value={form.description} onChange={e=>setForm({...form,description:e.target.value})}/></label>
+    </div><button className="btn mt-4">Schedule lecture</button><ErrorText>{error}</ErrorText>{message&&<p className="text-sm text-teal mt-3">{message}</p>}</form>
+    <section className="card p-5"><h2 className="font-bold mb-3">All lectures ({items.length})</h2>{items.length?items.map(l=><div className="border-t py-4" key={l._id}><div className="flex flex-wrap justify-between gap-3"><div><b>{l.title}</b><p className="text-xs text-slate-500 mt-1">{l.course?.name} · {l.teacher||"Teacher not set"} · {new Date(l.date).toLocaleString()}</p></div><span className={"text-xs rounded-full px-3 py-1 h-fit "+(l.status==="CANCELLED"?"bg-red-50 text-red-700":l.status==="RESCHEDULED"?"bg-amber-50 text-amber-700":"bg-sage text-teal")}>{l.status}</span></div>
+      <div className="flex flex-wrap gap-2 mt-3"><input className="field !w-auto" type="datetime-local" value={reschedule[l._id]||new Date(l.date).toISOString().slice(0,16)} onChange={e=>setReschedule(p=>({...p,[l._id]:e.target.value}))}/><button className="btn btn-secondary" onClick={()=>update(l._id,{date:new Date(reschedule[l._id]||l.date),status:"RESCHEDULED"})}>Reschedule</button>{l.status!=="CANCELLED"&&<button className="text-sm text-red-600 px-3" onClick={()=>update(l._id,{status:"CANCELLED"})}>Cancel lecture</button>}{l.status==="CANCELLED"&&<button className="text-sm text-teal px-3" onClick={()=>update(l._id,{status:"SCHEDULED"})}>Restore</button>}</div>
+      {l.meetingLink&&<a className="text-sm text-teal inline-block mt-2" href={l.meetingLink} target="_blank" rel="noreferrer">Meeting link ↗</a>}{l.recordingUrl&&<a className="text-sm text-teal inline-block mt-2 ml-3" href={l.recordingUrl} target="_blank" rel="noreferrer">Recording ↗</a>}
+    </div>):<p className="text-sm text-slate-500">No lectures scheduled.</p>}</section>
+  </>;
+}
