@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { User, Course, Lesson, Material, Lecture, Assignment, Submission, Attendance, Announcement } from "../models/index.js";
+import { User, Course, Lesson, Material, Lecture, Assignment, Submission, Attendance, Announcement, PersonalNote } from "../models/index.js";
 const router=Router();
 router.get("/dashboard",async(req,res)=>{
  const student=await User.findById(req.user._id).populate("courses","name code months");
@@ -102,6 +102,21 @@ router.get("/certificates",async(req,res)=>{
    }
  }
  res.json(certificates);
+});
+router.get("/notes",async(req,res)=>{
+ const notes=await PersonalNote.find({student:req.user._id}).select("lesson body updatedAt");
+ res.json(notes);
+});
+router.put("/lessons/:id/note",async(req,res)=>{
+ const lesson=await Lesson.findOne({_id:req.params.id,course:{$in:req.user.courses},status:"PUBLISHED"});
+ if(!lesson)return res.status(404).json({message:"Lesson unavailable"});
+ const body=String(req.body.body||"").slice(0,10000);
+ const note=await PersonalNote.findOneAndUpdate(
+  {student:req.user._id,lesson:lesson._id},
+  {body},
+  {upsert:true,new:true,setDefaultsOnInsert:true}
+ );
+ res.json(note);
 });
 router.get("/profile",async(req,res)=>res.json(await User.findById(req.user._id).select("-passwordHash").populate("courses","name")));
 export default router;
