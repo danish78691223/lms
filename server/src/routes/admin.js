@@ -4,6 +4,7 @@ import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { User, Course, Lesson, Material, Lecture, Assignment, Announcement, Activity } from "../models/index.js";
 import { audit } from "../utils/audit.js";
+import { ensureDefaultCourses } from "../utils/ensureDefaultCourses.js";
 const router = Router();
 const studentInput = z.object({
   fullName: z.string().min(2), fatherName: z.string().optional(), phone: z.string().optional(),
@@ -70,7 +71,10 @@ router.delete("/students/:id", async (req,res) => {
   await audit(req.user._id,"DELETE_STUDENT","User",student.userId);
   res.json({message:"Student deleted"});
 });
-router.get("/courses", async (req,res)=>res.json(await Course.find().sort({name:1})));
+router.get("/courses", async (req,res)=>{
+  await ensureDefaultCourses();
+  res.json(await Course.find().sort({name:1}));
+});
 router.post("/courses/:id/months", async (req,res)=>{
   const course = await Course.findById(req.params.id); if(!course) return res.status(404).json({message:"Course not found"});
   const month = Number(req.body.number);
