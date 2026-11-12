@@ -191,6 +191,20 @@ router.get("/reports", async (req, res) => {
 });
 
 // Persist institute profile/settings
+router.get("/certificates", async (req, res) => {
+  const students = await User.find({ role: "STUDENT", active: true }).select("fullName userId courses completedLessons").populate("courses", "name code");
+  const result = [];
+  for (const student of students) {
+    const completed = new Set((student.completedLessons || []).map((id) => String(id)));
+    for (const course of student.courses) {
+      const lessons = await Lesson.find({ course: course._id, status: "PUBLISHED" }).select("_id");
+      if (lessons.length > 0 && lessons.every((lesson) => completed.has(String(lesson._id)))) {
+        result.push({ studentId: student._id, studentName: student.fullName, userId: student.userId, courseId: course._id, courseName: course.name, courseCode: course.code });
+      }
+    }
+  }
+  res.json(result);
+});
 router.get("/settings", async (req, res) => {
   const settings = await InstituteSetting.findOne({ key: "main" });
   res.json(settings || { instituteName: "Lingo Institute", theme: "sage" });
