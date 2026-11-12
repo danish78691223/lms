@@ -176,3 +176,14 @@ export function AdminLectures() {
     </div>):<p className="text-sm text-slate-500">No lectures scheduled.</p>}</section>
   </>;
 }
+
+
+export function StudentProfile() {
+  const [profile,setProfile]=useState(null),[current,setCurrent]=useState(""),[next,setNext]=useState(""),[confirm,setConfirm]=useState(""),[error,setError]=useState(""),[message,setMessage]=useState("");
+  useEffect(()=>{api("/student/profile").then(setProfile).catch(e=>setError(e.message))},[]);
+  async function changePassword(e){e.preventDefault();setError("");setMessage("");if(next.length<10){setError("New password must contain at least 10 characters.");return}if(next!==confirm){setError("New passwords do not match.");return}try{await api("/auth/change-password",{method:"POST",body:JSON.stringify({currentPassword:current,newPassword:next})});setCurrent("");setNext("");setConfirm("");setMessage("Password updated successfully. Use the new password next time you log in.")}catch(e){setError(e.message)}}
+  return <><Heading title="My profile" description="View your institute profile and update your account password."/>
+    {profile&&<section className="card p-5 max-w-2xl mb-5"><h2 className="text-xl font-bold">{profile.fullName}</h2><p className="text-sm text-slate-500">{profile.userId}</p><div className="grid sm:grid-cols-2 gap-3 mt-5 text-sm"><p><span className="text-slate-500">Phone:</span> {profile.phone||"—"}</p><p><span className="text-slate-500">WhatsApp:</span> {profile.whatsapp||"—"}</p><p><span className="text-slate-500">Email:</span> {profile.email||"—"}</p><p><span className="text-slate-500">Batch:</span> {profile.batch||"—"}</p><p><span className="text-slate-500">City:</span> {profile.city||"—"}</p><p><span className="text-slate-500">Courses:</span> {(profile.courses||[]).map(c=>c.name).join(", ")||"—"}</p></div></section>}
+    <form className="card p-5 max-w-2xl" onSubmit={changePassword}><h2 className="font-bold mb-4">Change password</h2><label className="block text-sm mb-3">Current password<input className="field mt-1" type="password" required value={current} onChange={e=>setCurrent(e.target.value)}/></label><label className="block text-sm mb-3">New password (10+ characters)<input className="field mt-1" type="password" required minLength={10} value={next} onChange={e=>setNext(e.target.value)}/></label><label className="block text-sm mb-4">Confirm new password<input className="field mt-1" type="password" required value={confirm} onChange={e=>setConfirm(e.target.value)}/></label><button className="btn">Update password</button><ErrorText>{error}</ErrorText>{message&&<p className="text-sm text-teal mt-3">{message}</p>}</form>
+  </>;
+}
