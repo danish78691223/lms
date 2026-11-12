@@ -153,7 +153,7 @@ router.post("/lectures", async (req,res)=>{
   res.status(201).json(x);
 });
 router.post("/lectures/recurring", async (req, res) => {
-  const { startDate, endDate, weekdays, ...lectureFields } = req.body || {};
+  const { startDate, endDate, weekdays, utcOffsetMinutes = 0, ...lectureFields } = req.body || {};
   if (!startDate || !endDate || !Array.isArray(weekdays) || weekdays.length === 0)
     return res.status(400).json({ message: "Start date, end date and at least one weekday are required" });
   const start = new Date(String(startDate) + "T00:00:00.000Z");
