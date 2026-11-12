@@ -123,3 +123,26 @@ export function StudentRecordings() {
   useEffect(()=>{api("/student/recordings").then(setItems).catch(e=>setError(e.message))},[]);
   return <><Heading title="Recorded classes" description="Revisit recorded lessons from your enrolled courses."/><ErrorText>{error}</ErrorText>{items.length?<div className="grid md:grid-cols-2 gap-4">{items.map(x=><div className="card p-5" key={x._id}><Video className="text-teal mb-3"/><b>{x.title}</b><p className="text-xs text-slate-500 mt-1">{x.course?.name} · {new Date(x.date).toLocaleDateString()}</p>{x.recordingUrl?<a className="btn inline-block mt-4" href={x.recordingUrl} target="_blank" rel="noreferrer">Watch recording ↗</a>:<p className="text-sm text-slate-500 mt-3">Recording not uploaded yet.</p>}</div>)}</div>:<Empty>No recorded classes published for your courses.</Empty>}</>;
 }
+
+
+export function AdminLessons() {
+  const [courses,setCourses]=useState([]),[courseId,setCourseId]=useState(""),[monthId,setMonthId]=useState(""),[lessons,setLessons]=useState([]),[form,setForm]=useState({week:1,title:"",description:"",content:"",status:"DRAFT"}),[error,setError]=useState(""),[message,setMessage]=useState("");
+  const selectedCourse=courses.find(c=>c._id===courseId);
+  async function loadLessons(){try{setLessons(await api("/admin/lessons"))}catch(e){setError(e.message)}}
+  useEffect(()=>{api("/admin/courses").then(rows=>{setCourses(rows);if(rows[0]){setCourseId(rows[0]._id);setMonthId(rows[0].months?.[0]?._id||"")}}).catch(e=>setError(e.message));loadLessons()},[]);
+  async function create(e){e.preventDefault();setError("");setMessage("");try{if(!courseId||!monthId)throw new Error("Select a course and month.");await api("/admin/lessons",{method:"POST",body:JSON.stringify({...form,week:Number(form.week),course:courseId,monthId})});setForm(p=>({...p,title:"",description:"",content:""}));setMessage("Lesson saved.");await loadLessons()}catch(e){setError(e.message)}}
+  return <section className="card p-6 mt-6"><h2 className="text-xl font-bold mb-1">Lessons by week</h2><p className="text-sm text-slate-500 mb-4">Create draft lessons and publish them when ready. Only published lessons appear in the student syllabus.</p>
+    <form onSubmit={create} className="grid md:grid-cols-2 gap-3">
+      <label className="text-sm">Course<select className="field mt-1" value={courseId} onChange={e=>{const c=courses.find(x=>x._id===e.target.value);setCourseId(e.target.value);setMonthId(c?.months?.[0]?._id||"")}}>{courses.map(c=><option value={c._id} key={c._id}>{c.name}</option>)}</select></label>
+      <label className="text-sm">Month<select className="field mt-1" value={monthId} onChange={e=>setMonthId(e.target.value)}>{(selectedCourse?.months||[]).sort((a,b)=>a.number-b.number).map(m=><option value={m._id} key={m._id}>Month {m.number}: {m.title}</option>)}</select></label>
+      <label className="text-sm">Week<input className="field mt-1" type="number" min="1" max="6" value={form.week} onChange={e=>setForm({...form,week:e.target.value})}/></label>
+      <label className="text-sm">Lesson title<input className="field mt-1" required value={form.title} onChange={e=>setForm({...form,title:e.target.value})}/></label>
+      <label className="text-sm md:col-span-2">Description<input className="field mt-1" value={form.description} onChange={e=>setForm({...form,description:e.target.value})}/></label>
+      <label className="text-sm md:col-span-2">Lesson content / notes<textarea className="field mt-1" rows="3" value={form.content} onChange={e=>setForm({...form,content:e.target.value})}/></label>
+      <label className="text-sm">Publication status<select className="field mt-1" value={form.status} onChange={e=>setForm({...form,status:e.target.value})}><option value="DRAFT">Draft</option><option value="PUBLISHED">Published</option></select></label>
+      <div className="flex items-end"><button className="btn">Save lesson</button></div>
+    </form>
+    <ErrorText>{error}</ErrorText>{message&&<p className="text-sm text-teal mt-2">{message}</p>}
+    <div className="mt-5 border-t pt-4"><h3 className="font-semibold mb-2">Existing lessons ({lessons.length})</h3>{lessons.length?lessons.map(l=><div key={l._id} className="py-2 border-b last:border-0 flex flex-wrap justify-between gap-2"><div><b className="text-sm">{l.title}</b><p className="text-xs text-slate-500">{l.course?.name} · Week {l.week}</p></div><span className="text-xs text-teal">{l.status}</span></div>):<p className="text-sm text-slate-500">No lessons created yet.</p>}</div>
+  </section>;
+}
