@@ -1,0 +1,8 @@
+{
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "https://lms-ccoo.onrender.com/api/:path*"
+    }
+  ]
+}
