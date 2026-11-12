@@ -187,3 +187,15 @@ export function StudentProfile() {
     <form className="card p-5 max-w-2xl" onSubmit={changePassword}><h2 className="font-bold mb-4">Change password</h2><label className="block text-sm mb-3">Current password<input className="field mt-1" type="password" required value={current} onChange={e=>setCurrent(e.target.value)}/></label><label className="block text-sm mb-3">New password (10+ characters)<input className="field mt-1" type="password" required minLength={10} value={next} onChange={e=>setNext(e.target.value)}/></label><label className="block text-sm mb-4">Confirm new password<input className="field mt-1" type="password" required value={confirm} onChange={e=>setConfirm(e.target.value)}/></label><button className="btn">Update password</button><ErrorText>{error}</ErrorText>{message&&<p className="text-sm text-teal mt-3">{message}</p>}</form>
   </>;
 }
+
+
+export function StudentCourses() {
+  const [courses,setCourses]=useState([]),[error,setError]=useState("");
+  useEffect(()=>{api("/student/progress").then(x=>setCourses(x.courses||[])).catch(e=>setError(e.message))},[]);
+  return <><Heading title="My courses" description="Your eight-month roadmap for each enrolled language."/><ErrorText>{error}</ErrorText>
+    {courses.length?courses.map(course=><section className="card p-5 mb-5" key={course.courseId}><div className="flex flex-wrap justify-between gap-3"><div><h2 className="text-xl font-bold">{course.name}</h2><p className="text-sm text-slate-500 mt-1">{course.completedLessons} of {course.totalLessons} lessons completed</p></div><span className="text-teal font-bold">{course.percent}% complete</span></div>
+      <div className="h-2 bg-slate-100 rounded-full mt-4"><div className="h-2 bg-teal rounded-full" style={{width:course.percent+"%"}}/></div>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-5">{Array.from({length:8},(_,index)=>{const number=index+1,done=(course.completedMonthNumbers||[]).includes(number),published=(course.publishedMonthNumbers||[]).includes(number),current=published&&!done&&(course.publishedMonthNumbers||[]).filter(n=>!(course.completedMonthNumbers||[]).includes(n))[0]===number;return <div key={number} className={"rounded-xl border p-3 "+(done?"bg-green-50 border-green-100":current?"bg-sage border-teal/30":"bg-slate-50 border-slate-100")}><b className="text-sm">Month {number}</b><p className="text-xs mt-2">{done?"Completed":current?"Current":published?"Published":"Upcoming"}</p></div>})}</div>
+    </section>):<Empty>You are not enrolled in any courses yet. Contact your institute administrator.</Empty>}
+  </>;
+}
