@@ -14,7 +14,7 @@ router.get("/courses",async(req,res)=>res.json(await Course.find({_id:{$in:req.u
 router.get("/syllabus",async(req,res)=>{
  const courses=await Course.find({_id:{$in:req.user.courses}});
  const lessons=await Lesson.find({course:{$in:courses.map(c=>c._id)},status:"PUBLISHED"}).populate("course","name");
- res.json({courses:courses.map(c=>({...c.toObject(),months:c.months.filter(m=>m.status==="PUBLISHED")})),lessons});
+ res.json({courses:courses.map(c=>({...c.toObject(),months:c.months.filter(m=>m.status==="PUBLISHED")})),lessons,completedLessonIds:req.user.completedLessons||[]});
 });
 router.get("/materials",async(req,res)=>{
  const courses=req.user.courses;
