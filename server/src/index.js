@@ -14,7 +14,7 @@ import studentRoutes from "./routes/student.js";
 const app = express();
 const allowedOrigins = (process.env.CLIENT_ORIGIN || "http://localhost:5173")
   .split(",")
-  .map((origin) => origin.trim().replace(/\\/$/, ""))
+  .map((origin) => origin.trim().replace(/\/$/, ""))
   .filter(Boolean);
 
 app.use(helmet());
@@ -45,7 +45,7 @@ app.use((err, req, res, next) => {
 });
 const port = process.env.PORT || 5000;
 connectDB()
-  .then(() => app.listen(port, () => console.log(`API listening on ${port}`)))
+  .then(() => app.listen(port, () => console.log("API listening on " + port)))
   .catch((e) => {
     console.error(e);
     process.exit(1);
