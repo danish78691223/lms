@@ -7,7 +7,7 @@ import { authenticate } from "../middleware/auth.js";
 
 const router = Router();
 const secureCookie = process.env.COOKIE_SECURE === "true";
-const cookieSameSite = secureCookie ? "none" : "lax";
+const cookieSameSite = "lax"; // Production API is same-origin through the Vercel rewrite.
 const cookieOptions = () => ({
   httpOnly: true,
   secure: secureCookie,
