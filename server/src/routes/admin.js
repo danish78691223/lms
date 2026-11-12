@@ -169,7 +169,7 @@ router.post("/lectures/recurring", async (req, res) => {
   if (!course) return res.status(400).json({ message: "Select a valid course" });
   const time = String(lectureFields.startTime || "00:00");
   const hour = Number(time.slice(0, 2)), minute = Number(time.slice(3, 5));
-  if (!/^([01]\\d|2[0-3]):[0-5]\\d$/.test(time))
+  if (!/^([01][0-9]|2[0-3]):[0-5][0-9]$/.test(time))
     return res.status(400).json({ message: "Start time must use HH:MM format" });
   const dates = [];
   for (const cursor = new Date(start); cursor <= end; cursor.setUTCDate(cursor.getUTCDate() + 1)) {
