@@ -152,6 +152,38 @@ router.post("/lectures", async (req,res)=>{
   await audit(req.user._id,"CREATE_LECTURE","Lecture",x.title);
   res.status(201).json(x);
 });
+router.post("/lectures/recurring", async (req, res) => {
+  const { startDate, endDate, weekdays, ...lectureFields } = req.body || {};
+  if (!startDate || !endDate || !Array.isArray(weekdays) || weekdays.length === 0)
+    return res.status(400).json({ message: "Start date, end date and at least one weekday are required" });
+  const start = new Date(String(startDate) + "T00:00:00.000Z");
+  const end = new Date(String(endDate) + "T00:00:00.000Z");
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end < start)
+    return res.status(400).json({ message: "Invalid recurrence date range" });
+  if ((end.getTime() - start.getTime()) / 86400000 > 90)
+    return res.status(400).json({ message: "Weekly recurrence can be scheduled for up to 90 days at a time" });
+  const days = new Set(weekdays.map(Number));
+  if ([...days].some(day => !Number.isInteger(day) || day < 0 || day > 6))
+    return res.status(400).json({ message: "Invalid weekday selection" });
+  const course = await Course.findById(lectureFields.course);
+  if (!course) return res.status(400).json({ message: "Select a valid course" });
+  const time = String(lectureFields.startTime || "00:00");
+  const hour = Number(time.slice(0, 2)), minute = Number(time.slice(3, 5));
+  if (!/^([01]\\d|2[0-3]):[0-5]\\d$/.test(time))
+    return res.status(400).json({ message: "Start time must use HH:MM format" });
+  const dates = [];
+  for (const cursor = new Date(start); cursor <= end; cursor.setUTCDate(cursor.getUTCDate() + 1)) {
+    if (days.has(cursor.getUTCDay())) {
+      const date = new Date(cursor);
+      date.setUTCHours(hour, minute, 0, 0);
+      dates.push(date);
+    }
+  }
+  if (dates.length === 0) return res.status(400).json({ message: "No scheduled dates match these weekdays" });
+  const lectures = await Lecture.insertMany(dates.map(date => ({ ...lectureFields, date, status: "SCHEDULED" })));
+  await audit(req.user._id, "CREATE_RECURRING_LECTURES", "Lecture", `${lectureFields.title} (${lectures.length} sessions)`);
+  res.status(201).json({ message: "Recurring lectures scheduled", count: lectures.length, lectures });
+});
 router.patch("/lectures/:id", async (req,res)=>{
   const allowed = ["title","topic","teacher","date","startTime","endTime","mode","meetingLink","recordingUrl","batch","description","month","status"];
   const update = Object.fromEntries(Object.entries(req.body || {}).filter(([key])=>allowed.includes(key)));
