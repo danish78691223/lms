@@ -26,12 +26,40 @@ router.get("/announcements",async(req,res)=>res.json(await Announcement.find({st
 router.get("/assignments",async(req,res)=>{
  const assignments=await Assignment.find({status:"PUBLISHED",course:{$in:req.user.courses}}).populate("course","name");
  const submissions=await Submission.find({student:req.user._id});
- res.json(assignments.map(a=>({...a.toObject(),submission:submissions.find(s=>String(s.assignment)===String(a._id))||null})));
+ res.json(assignments.map(a=>{
+   const item=a.toObject();
+   // Never send answer keys to the browser.
+   item.questions=(item.questions||[]).map(q=>({prompt:q.prompt,options:q.options,kind:q.kind}));
+   item.submission=submissions.find(s=>String(s.assignment)===String(a._id))||null;
+   return item;
+ }));
 });
 router.post("/assignments/:id/submit",async(req,res)=>{
  const assignment=await Assignment.findOne({_id:req.params.id,status:"PUBLISHED",course:{$in:req.user.courses}});
  if(!assignment)return res.status(404).json({message:"Assignment unavailable"});
- const submission=await Submission.findOneAndUpdate({assignment:assignment._id,student:req.user._id},{answerText:req.body.answerText,fileUrl:req.body.fileUrl,submittedAt:new Date()},{upsert:true,new:true,setDefaultsOnInsert:true});
+ let answerText=String(req.body.answerText||"");
+ let marks=null, maxMarks=null, feedback="";
+ if (["QUIZ","TEST"].includes(assignment.type)) {
+   if (!Array.isArray(req.body.answers)) return res.status(400).json({message:"Submit quiz answers"});
+   const questions=assignment.questions||[];
+   if (!questions.length) return res.status(400).json({message:"This quiz has no questions yet"});
+   const answers=req.body.answers;
+   let correct=0;
+   questions.forEach((question,index)=>{
+     const submitted=String(answers[index]??"").trim().toLocaleLowerCase();
+     const expected=String(question.answer??"").trim().toLocaleLowerCase();
+     if(submitted && submitted===expected) correct++;
+   });
+   maxMarks=questions.length;
+   marks=correct;
+   feedback=`Auto-graded: ${correct} out of ${questions.length} correct (${Math.round(correct/questions.length*100)}%).`;
+   answerText=JSON.stringify({answers});
+ }
+ const submission=await Submission.findOneAndUpdate(
+   {assignment:assignment._id,student:req.user._id},
+   {answerText,fileUrl:req.body.fileUrl,submittedAt:new Date(),...(marks!==null?{marks,maxMarks,feedback}:{})},
+   {upsert:true,new:true,setDefaultsOnInsert:true}
+ );
  res.json(submission);
 });
 router.post("/lessons/:id/complete",async(req,res)=>{
@@ -41,5 +69,21 @@ router.post("/lessons/:id/complete",async(req,res)=>{
  res.json({message:"Lesson marked complete"});
 });
 router.get("/attendance",async(req,res)=>res.json(await Attendance.find({student:req.user._id}).populate({path:"lecture",populate:{path:"course",select:"name"}}).sort({createdAt:-1})));
+router.get("/progress",async(req,res)=>{
+ const student=await User.findById(req.user._id).select("courses completedLessons");
+ const [courses,lessons,submissions,attendance]=await Promise.all([
+   Course.find({_id:{$in:student.courses}}).select("name code months"),
+   Lesson.find({course:{$in:student.courses},status:"PUBLISHED"}).select("course monthId title"),
+   Submission.find({student:req.user._id}).populate("assignment","title type"),
+   Attendance.find({student:req.user._id}),
+ ]);
+ const completed=new Set((student.completedLessons||[]).map(id=>String(id)));
+ const perCourse=courses.map(course=>{
+   const courseLessons=lessons.filter(l=>String(l.course)===String(course._id));
+   const done=courseLessons.filter(l=>completed.has(String(l._id))).length;
+   return {courseId:course._id,name:course.name,totalLessons:courseLessons.length,completedLessons:done,percent:courseLessons.length?Math.round(done/courseLessons.length*100):0,totalMonths:8,publishedMonths:course.months.filter(m=>m.status==="PUBLISHED").length};
+ });
+ res.json({courses:perCourse,submissions:submissions.length,graded:submissions.filter(s=>s.marks!=null).length,attendance:attendance.length,attendancePresent:attendance.filter(a=>a.status==="PRESENT").length});
+});
 router.get("/profile",async(req,res)=>res.json(await User.findById(req.user._id).select("-passwordHash").populate("courses","name")));
 export default router;
