@@ -21,7 +21,7 @@ router.get("/materials",async(req,res)=>{
  const filter={course:{$in:courses},status:"PUBLISHED",$or:[{batches:{$size:0}},{batches:req.user.batch},{studentIds:req.user._id}]};
  res.json(await Material.find(filter).populate("course","name").sort({createdAt:-1}));
 });
-router.get("/lectures",async(req,res)=>res.json(await Lecture.find({course:{$in:req.user.courses},status:{$ne:"CANCELLED"}}).populate("course","name").sort({date:1})));
+router.get("/lectures",async(req,res)=>res.json(await Lecture.find({course:{$in:req.user.courses}}).populate("course","name").sort({date:1})));
 router.get("/announcements",async(req,res)=>res.json(await Announcement.find({status:"PUBLISHED",$or:[{courses:{$size:0}},{courses:{$in:req.user.courses}},{batches:req.user.batch}]}).sort({pinned:-1,createdAt:-1})));
 router.get("/assignments",async(req,res)=>{
  const assignments=await Assignment.find({status:"PUBLISHED",course:{$in:req.user.courses}}).populate("course","name");
