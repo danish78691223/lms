@@ -2,7 +2,7 @@ import { Router } from "express";
 import crypto from "crypto";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
-import { User, Course, Lesson, Material, Lecture, Assignment, Announcement, Activity } from "../models/index.js";
+import { User, Course, Lesson, Material, Lecture, Assignment, Submission, Attendance, Announcement, Activity, InstituteSetting } from "../models/index.js";
 import { audit } from "../utils/audit.js";
 import { ensureDefaultCourses } from "../utils/ensureDefaultCourses.js";
 const router = Router();
@@ -107,4 +107,104 @@ router.get("/assignments", async (req,res)=>res.json(await Assignment.find().pop
 router.post("/announcements", async (req,res)=>res.status(201).json(await Announcement.create(req.body)));
 router.get("/announcements", async (req,res)=>res.json(await Announcement.find().sort({pinned:-1,createdAt:-1})));
 router.get("/activity", async (req,res)=>res.json(await Activity.find().populate("actor","fullName").sort({createdAt:-1}).limit(100)));
+
+// Attendance roster and bulk marking
+router.get("/attendance", async (req, res) => {
+  const { lectureId } = req.query;
+  if (!lectureId) return res.status(400).json({ message: "Select a lecture first" });
+  const lecture = await Lecture.findById(lectureId).populate("course", "name");
+  if (!lecture) return res.status(404).json({ message: "Lecture not found" });
+  const studentFilter = { role: "STUDENT", active: true, courses: lecture.course._id };
+  if (lecture.batch) studentFilter.batch = lecture.batch;
+  const [students, records] = await Promise.all([
+    User.find(studentFilter).select("fullName userId batch"),
+    Attendance.find({ lecture: lecture._id }),
+  ]);
+  const statusByStudent = new Map(records.map((record) => [String(record.student), record.status]));
+  res.json({ lecture, students: students.map((student) => ({
+    _id: student._id, fullName: student.fullName, userId: student.userId, batch: student.batch,
+    status: statusByStudent.get(String(student._id)) || "ABSENT",
+  })) });
+});
+router.post("/attendance/bulk", async (req, res) => {
+  const { lectureId, records } = req.body || {};
+  if (!lectureId || !Array.isArray(records) || records.length === 0)
+    return res.status(400).json({ message: "Lecture and attendance records are required" });
+  const lecture = await Lecture.findById(lectureId);
+  if (!lecture) return res.status(404).json({ message: "Lecture not found" });
+  const validStatuses = new Set(["PRESENT", "ABSENT", "LATE"]);
+  const studentIds = records.map((item) => String(item.studentId || ""));
+  if (studentIds.some((id) => !id) || records.some((item) => !validStatuses.has(item.status)))
+    return res.status(400).json({ message: "Invalid attendance record" });
+  const students = await User.find({ _id: { $in: studentIds }, role: "STUDENT", courses: lecture.course });
+  if (students.length !== new Set(studentIds).size)
+    return res.status(400).json({ message: "One or more students are not enrolled in this lecture course" });
+  await Promise.all(records.map((item) => Attendance.findOneAndUpdate(
+    { lecture: lecture._id, student: item.studentId },
+    { status: item.status },
+    { upsert: true, new: true, setDefaultsOnInsert: true },
+  )));
+  await audit(req.user._id, "MARK_ATTENDANCE", "Lecture", lecture.title);
+  res.json({ message: "Attendance saved", count: records.length });
+});
+
+// Assignment and quiz submissions: teacher review and marking
+router.get("/submissions", async (req, res) => {
+  const filter = req.query.assignmentId ? { assignment: req.query.assignmentId } : {};
+  const submissions = await Submission.find(filter)
+    .populate("student", "fullName userId batch")
+    .populate("assignment", "title type course dueDate")
+    .sort({ submittedAt: -1 });
+  res.json(submissions);
+});
+router.patch("/submissions/:id", async (req, res) => {
+  const marks = Number(req.body.marks);
+  const feedback = String(req.body.feedback || "").slice(0, 3000);
+  if (!Number.isFinite(marks) || marks < 0)
+    return res.status(400).json({ message: "Marks must be a non-negative number" });
+  const submission = await Submission.findById(req.params.id).populate("assignment", "title");
+  if (!submission) return res.status(404).json({ message: "Submission not found" });
+  if (submission.maxMarks != null && marks > submission.maxMarks)
+    return res.status(400).json({ message: `Marks cannot exceed ${submission.maxMarks}` });
+  submission.marks = marks;
+  submission.feedback = feedback;
+  await submission.save();
+  await audit(req.user._id, "GRADE_SUBMISSION", "Submission", submission.assignment?.title || submission._id);
+  res.json({ message: "Submission graded", submission });
+});
+
+// Basic institute progress and reporting
+router.get("/reports", async (req, res) => {
+  const [students, activeStudents, courses, lectures, materials, assignments, submissions] = await Promise.all([
+    User.countDocuments({ role: "STUDENT" }),
+    User.countDocuments({ role: "STUDENT", active: true }),
+    Course.find().select("name code"),
+    Lecture.countDocuments(),
+    Material.countDocuments(),
+    Assignment.countDocuments(),
+    Submission.countDocuments(),
+  ]);
+  const attendance = await Attendance.aggregate([
+    { $group: { _id: "$status", count: { $sum: 1 } } },
+  ]);
+  res.json({ students, activeStudents, courses, lectures, materials, assignments, submissions, attendance });
+});
+
+// Persist institute profile/settings
+router.get("/settings", async (req, res) => {
+  const settings = await InstituteSetting.findOne({ key: "main" });
+  res.json(settings || { instituteName: "Lingo Institute", theme: "sage" });
+});
+router.put("/settings", async (req, res) => {
+  const allowed = ["instituteName", "logoUrl", "contactEmail", "contactPhone", "address", "theme"];
+  const update = Object.fromEntries(Object.entries(req.body || {}).filter(([key]) => allowed.includes(key)));
+  if (update.instituteName !== undefined && !String(update.instituteName).trim())
+    return res.status(400).json({ message: "Institute name is required" });
+  const settings = await InstituteSetting.findOneAndUpdate(
+    { key: "main" }, { $set: { ...update, updatedBy: req.user._id } },
+    { new: true, upsert: true, setDefaultsOnInsert: true, runValidators: true },
+  );
+  await audit(req.user._id, "UPDATE_SETTINGS", "InstituteSetting", settings.instituteName);
+  res.json(settings);
+});
 export default router;
