@@ -197,7 +197,7 @@ router.post("/attendance/bulk", async (req, res) => {
   const studentIds = records.map((item) => String(item.studentId || ""));
   if (studentIds.some((id) => !id) || records.some((item) => !validStatuses.has(item.status)))
     return res.status(400).json({ message: "Invalid attendance record" });
-  const students = await User.find({ _id: { $in: studentIds }, role: "STUDENT", courses: lecture.course });
+  const enrollmentFilter = { _id: { $in: studentIds }, role: "STUDENT", active: true, courses: lecture.course };\n  if (lecture.batch) enrollmentFilter.batch = lecture.batch;\n  const students = await User.find(enrollmentFilter);
   if (students.length !== new Set(studentIds).size)
     return res.status(400).json({ message: "One or more students are not enrolled in this lecture course" });
   await Promise.all(records.map((item) => Attendance.findOneAndUpdate(
