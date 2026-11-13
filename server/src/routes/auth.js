@@ -1,4 +1,5 @@
 import { Router } from "express";
+import rateLimit from "express-rate-limit";
 import crypto from "crypto";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
@@ -28,7 +29,7 @@ router.post("/login", async (req, res) => {
   res.json({ user: { id: user._id, userId: user.userId, fullName: user.fullName, role: user.role, forcePasswordChange: user.forcePasswordChange } });
 });
 
-router.post("/admin-password-reset", async (req, res) => {
+router.post("/admin-password-reset", rateLimit({ windowMs: 15 * 60 * 1000, max: 5, standardHeaders: true, legacyHeaders: false }), async (req, res) => {
   const configuredKey = process.env.ADMIN_PASSWORD_RESET_KEY || "";
   if (!configuredKey) {
     return res.status(503).json({ message: "Admin password reset is disabled. Configure the reset key in Render first." });
