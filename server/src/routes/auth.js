@@ -30,6 +30,7 @@ router.post("/login", async (req, res) => {
 });
 
 router.post("/admin-password-reset", rateLimit({ windowMs: 15 * 60 * 1000, max: 5, standardHeaders: true, legacyHeaders: false }), async (req, res) => {
+  res.set("Cache-Control", "no-store");
   const configuredKey = process.env.ADMIN_PASSWORD_RESET_KEY || "";
   if (!configuredKey) {
     return res.status(503).json({ message: "Admin password reset is disabled. Configure the reset key in Render first." });
