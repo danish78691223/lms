@@ -4,6 +4,8 @@ const { Schema, model } = mongoose;
 const userSchema = new Schema({
   userId: { type: String, unique: true, sparse: true, trim: true },
   passwordHash: { type: String, required: true },
+  passwordVersion: { type: Number, default: 0 },
+  lastAdminResetKeyHash: { type: String, select: false },
   role: { type: String, enum: ["ADMIN", "STUDENT"], required: true },
   fullName: { type: String, required: true, trim: true },
   fatherName: String, phone: String, whatsapp: String, email: String,
