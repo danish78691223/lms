@@ -56,3 +56,16 @@ server/
 client/
   src/{components,pages,context}/
 ```
+
+## Temporary browser admin password reset
+
+A standalone reset page is published at `/admin-password-reset.html`. It does not expose the reset credential in the page source. The reset API is protected by a one-time secret, enforces a 12-character minimum, rate-limits attempts, hashes the password with bcrypt, and increments the admin password version to invalidate existing sessions.
+
+1. Generate a temporary 64-character key on a trusted machine with Node.js:
+   `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`
+2. In Render → the LMS backend service → Environment, set `ADMIN_PASSWORD_RESET_KEY` to that value and deploy the backend.
+3. In Vercel, deploy the latest `main` commit. Open `https://YOUR-VERCEL-DOMAIN/admin-password-reset.html`.
+4. Paste the temporary key and enter/confirm a new password (12+ characters).
+5. After success, remove `ADMIN_PASSWORD_RESET_KEY` from Render and deploy the backend again. Delete `client/public/admin-password-reset.html`, `client/public/admin-password-reset.js`, and `client/public/admin-password-reset.css` from GitHub and redeploy Vercel.
+
+The endpoint only changes the active `userId: admin`, `role: ADMIN` account. It does not reset students, courses, lessons, materials, lectures, attendance, or submissions. The key hash is stored on the admin record to prevent reuse of that same key after a service restart. Do not commit the reset key or put it in the page URL.
