@@ -2,6 +2,26 @@ const form = document.getElementById("reset-form");
 const button = document.getElementById("submit-button");
 const message = document.getElementById("message");
 
+
+document.querySelectorAll(".toggle-password").forEach((toggle) => {
+  toggle.addEventListener("click", () => {
+    const input = document.getElementById(toggle.dataset.target);
+    if (!input) return;
+
+    const reveal = input.type === "password";
+    input.type = reveal ? "text" : "password";
+    toggle.textContent = reveal ? "Hide" : "Show";
+    toggle.setAttribute("aria-pressed", String(reveal));
+
+    const fieldName = input.id === "reset-key"
+      ? "reset key"
+      : input.id === "new-password"
+        ? "new password"
+        : "confirmation password";
+    toggle.setAttribute("aria-label", (reveal ? "Hide " : "Show ") + fieldName);
+  });
+});
+
 form.addEventListener("submit", async (event) => {
   event.preventDefault();
   message.textContent = "";
