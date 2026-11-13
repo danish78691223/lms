@@ -1,1 +1,69 @@
-<!doctype html><html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Language Institute LMS</title><link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Inter:wght@400;500;600;700&family=Noto+Naskh+Arabic:wght@400;600;700&family=Noto+Nastaliq+Urdu&display=swap" rel="stylesheet"></head><body><div id="root"></div><script type="module" src="/src/main.jsx"></script></body></html>
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#f7f9f8" />
+  <title>Language Institute LMS</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Inter:wght@400;500;600;700&family=Noto+Naskh+Arabic:wght@400;600;700&family=Noto+Nastaliq+Urdu&display=swap" rel="stylesheet" />
+  <style>
+    html,body{margin:0;min-height:100%;background:#f7f9f8;color:#2f3e46;font-family:Inter,system-ui,sans-serif}
+    .boot-panel{min-height:100vh;display:grid;place-items:center;padding:24px;box-sizing:border-box}
+    .boot-card{width:min(100%,520px);box-sizing:border-box;background:#fff;border:1px solid #e4ece8;border-radius:18px;padding:28px;box-shadow:0 12px 36px rgba(47,62,70,.07)}
+    .boot-title{font-size:20px;font-weight:700;margin:0 0 8px}
+    .boot-text{font-size:14px;line-height:1.6;color:#61716d;margin:0}
+    .boot-error{display:none;margin-top:16px;padding:12px;border-radius:10px;background:#fff1f0;color:#a33131;font:12px/1.5 ui-monospace,monospace;white-space:pre-wrap;overflow-wrap:anywhere}
+    .boot-retry{margin-top:16px;border:0;border-radius:10px;background:#4fa39a;color:#fff;padding:10px 16px;font-weight:600;cursor:pointer}
+  </style>
+</head>
+<body>
+  <div id="root">
+    <main class="boot-panel" id="boot-fallback">
+      <section class="boot-card">
+        <p class="boot-title">Starting Lingo Institute LMS…</p>
+        <p class="boot-text">Loading your secure student and administrator portal.</p>
+        <pre id="boot-error" class="boot-error"></pre>
+        <button id="boot-retry" class="boot-retry" type="button" style="display:none" onclick="location.reload()">Reload application</button>
+      </section>
+    </main>
+  </div>
+  <script>
+    (function () {
+      var root = document.getElementById("root");
+      var errorBox = document.getElementById("boot-error");
+      var retry = document.getElementById("boot-retry");
+      var shown = false;
+      function showBootError(label, detail) {
+        if (shown || !root || !document.getElementById("boot-fallback")) return;
+        shown = true;
+        var title = document.querySelector(".boot-title");
+        if (title) title.textContent = label;
+        var text = document.querySelector(".boot-text");
+        if (text) text.textContent = "The frontend could not start. Share the technical detail below with the administrator.";
+        errorBox.style.display = "block";
+        errorBox.textContent = String(detail || "Unknown startup error").slice(0, 1600);
+        retry.style.display = "inline-block";
+      }
+      window.addEventListener("error", function (event) {
+        var target = event.target;
+        if (target && target.tagName === "SCRIPT") {
+          showBootError("LMS script failed to load", target.src || event.message);
+        } else if (event.message) {
+          showBootError("LMS JavaScript error", event.message + (event.filename ? "\\n" + event.filename + ":" + event.lineno : ""));
+        }
+      }, true);
+      window.addEventListener("unhandledrejection", function (event) {
+        var reason = event.reason;
+        showBootError("LMS startup request failed", reason && (reason.stack || reason.message) || reason);
+      });
+      window.setTimeout(function () {
+        if (document.getElementById("boot-fallback")) {
+          showBootError("LMS did not finish starting", "The React application did not mount within 12 seconds. Check the Vercel deployment output and browser Network tab for the main JavaScript asset.");
+        }
+      }, 12000);
+    })();
+  </script>
+  <script type="module" src="/src/main.jsx"></script>
+</body>
+</html>
